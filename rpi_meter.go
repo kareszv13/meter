@@ -115,6 +115,11 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 			}
 		case 0xD0:
 			values["solarV"] = tempfloat*multip + 0.8
+			if 10 <= values["solarV"] && values["solarV"] <= 28 {
+				valuesBool["solarV"] = true
+			} else {
+				valuesBool["solarV"] = false
+			}
 		case 0xE0:
 			values["batteryI"] = (tempfloat - 1.8) * multip
 		case 0xF0:
@@ -126,6 +131,7 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 			os.Exit(1)
 		}
 	}
+	fmt.Println(valuesBool, beforeValuesBool)
 	for name, bol := range valuesBool {
 		if beforeValuesBool[name] != bol {
 			str := "off"
@@ -239,7 +245,7 @@ func main() {
 			time.Sleep(time.Duration(100) * time.Millisecond)
 		}
 	} else {
-		meterTicker := time.NewTicker(time.Minute * time.Duration(timerInt))
+		meterTicker := time.NewTicker(time.Second * time.Duration(timerInt))
 		go func() {
 			for t := range meterTicker.C {
 				fmt.Println(t)
