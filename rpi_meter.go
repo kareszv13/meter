@@ -128,9 +128,9 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 	}
 	for name, bol := range valuesBool {
 		if beforeValuesBool[name] != bol {
-			str := off
+			str := "off"
 			if !beforeValuesBool[name] && bol {
-				str = on
+				str = "on"
 			}
 			err := cli.Publish(&client.PublishOptions{
 				QoS:       mqtt.QoS0,
