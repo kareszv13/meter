@@ -144,6 +144,7 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 		}
 
 	}
+	beforeValuesBool = valuesBool
 	if logger {
 		fmt.Println(values)
 	}
