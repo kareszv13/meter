@@ -26,6 +26,7 @@ type Configuration struct {
 }
 
 var configuration Configuration
+var beforeValuesBool map[string]bool
 
 func getMCP3008Value(s spi.Conn, command byte) (float64, error) {
 	hex := false
@@ -64,6 +65,9 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 	var values map[string]float64
 	values = make(map[string]float64)
 
+	var valuesBool map[string]bool
+	valuesBool = make(map[string]bool)
+
 	for command := byte(0x80); command >= 0x80 && command <= 0xF0; command += 0x10 {
 		multip, _ := commands[command]
 		tempfloat, err := getMCP3008Value(s, command)
@@ -75,14 +79,40 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 		switch command {
 		case 0x80:
 			values["1V8"] = tempfloat * multip
+			if 1.7 <= values["1V8"] && values["1V8"] <= 1.9 {
+				valuesBool["1V8"] = true
+			} else {
+				valuesBool["1V8"] = false
+			}
 		case 0x90:
 			values["3V3"] = tempfloat * multip
+			if 3.1 <= values["3V3"] && values["3V3"] <= 3.5 {
+				valuesBool["3V3"] = true
+			} else {
+				valuesBool["3V3"] = false
+			}
 		case 0xA0:
 			values["batteryV"] = tempfloat * multip
+			if 3.5 <= values["batteryV"] && values["batteryV"] <= 4.3 {
+				valuesBool["batteryV"] = true
+			} else {
+				valuesBool["batteryV"] = false
+			}
 		case 0xB0:
 			values["5V"] = tempfloat * multip
+			if 4.7 <= values["5V"] && values["5V"] <= 5.3 {
+				valuesBool["5V"] = true
+			} else {
+				valuesBool["5V"] = false
+			}
+
 		case 0xC0:
 			values["48V"] = tempfloat*multip + 0.7
+			if 45 <= values["48V"] && values["48V"] <= 50 {
+				valuesBool["48V"] = true
+			} else {
+				valuesBool["48V"] = false
+			}
 		case 0xD0:
 			values["solarV"] = tempfloat*multip + 0.8
 		case 0xE0:
@@ -95,6 +125,24 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 			fmt.Fprintf(os.Stderr, "case_error\n")
 			os.Exit(1)
 		}
+	}
+	for name, bol := range valuesBool {
+		if beforeValuesBool[name] != bol {
+			str := off
+			if !beforeValuesBool[name] && bol {
+				str = on
+			}
+			err := cli.Publish(&client.PublishOptions{
+				QoS:       mqtt.QoS0,
+				TopicName: []byte("log"),
+				Message:   []byte(name + ":" + str),
+			})
+			if err != nil {
+				panic(err)
+			}
+
+		}
+
 	}
 	if logger {
 		fmt.Println(values)
@@ -115,6 +163,8 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 }
 
 func main() {
+
+	beforeValuesBool = make(map[string]bool)
 
 	dat, _ := ioutil.ReadFile("conf.json")
 	decoder := json.NewDecoder(bytes.NewBufferString(string(dat)))
