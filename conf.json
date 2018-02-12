@@ -1,0 +1,7 @@
+{
+    "BasicVerbose": true,
+    "BasicLogger": true,
+    "BasicTimer": 0,
+    "MqttAddress": "lora.sparkon.io:1883",
+    "MqttTopic": "meter"
+  }
