@@ -18,11 +18,25 @@ import (
 )
 
 type Configuration struct {
-	BasicVerbose bool   `json:"basicVerbose"`
-	BasicLogger  bool   `json:"basicLogger"`
-	BasicTimer   int    `json:"basicTimer"`
-	MqttAddress  string `json:"mqttAddress"`
-	MqttTopic    string `json:"mqttTopic"`
+	BasicVerbose bool   `json:"BasicVerbose"`
+	BasicLogger  bool   `json:"BasicLogger"`
+	BasicTimer   int    `json:"BasicTimer"`
+	MqttAddress  string `json:"MqttAddress"`
+	MqttTopic    string `json:"MqttTopic"`
+}
+
+type Mqttdata struct {
+	v1V8       float64
+	v3V3       float64
+	v5V        float64
+	v48V       float64
+	ibatteryI  float64
+	vbatteryV  float64
+	isolarI    float64
+	vsolarV    float64
+	time       bool
+	BasicTimer int
+	DeviceName string
 }
 
 var configuration Configuration
@@ -62,9 +76,8 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 
 	commands := map[byte]float64{0x80: 1.0, 0x90: 1.0, 0xA0: 1.0, 0xB0: 1.25, 0xC0: 13, 0xD0: 6.0, 0xE0: 1.6667, 0xF0: 1.6667}
 
-	var values map[string]float64
-	values = make(map[string]float64)
-
+	var mqttData Mqttdata
+	mqttData.vsolarV = 0
 	var valuesBool map[string]bool
 	valuesBool = make(map[string]bool)
 
@@ -78,53 +91,53 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 		}
 		switch command {
 		case 0x80:
-			values["1V8"] = tempfloat * multip
-			if 1.7 <= values["1V8"] && values["1V8"] <= 1.9 {
+			mqttData.v1V8 = tempfloat * multip
+			if 1.7 <= mqttData.v1V8 && mqttData.v1V8 <= 1.9 {
 				valuesBool["1V8"] = true
 			} else {
 				valuesBool["1V8"] = false
 			}
 		case 0x90:
-			values["3V3"] = tempfloat * multip
-			if 3.1 <= values["3V3"] && values["3V3"] <= 3.5 {
+			mqttData.v3V3 = tempfloat * multip
+			if 3.1 <= mqttData.v3V3 && mqttData.v3V3 <= 3.5 {
 				valuesBool["3V3"] = true
 			} else {
 				valuesBool["3V3"] = false
 			}
 		case 0xA0:
-			values["batteryV"] = tempfloat * multip
-			if 3.5 <= values["batteryV"] && values["batteryV"] <= 4.3 {
+			mqttData.vbatteryV = tempfloat * multip
+			if 3.5 <= mqttData.vbatteryV && mqttData.vbatteryV <= 4.3 {
 				valuesBool["batteryV"] = true
 			} else {
 				valuesBool["batteryV"] = false
 			}
 		case 0xB0:
-			values["5V"] = tempfloat * multip
-			if 4.7 <= values["5V"] && values["5V"] <= 5.3 {
+			mqttData.v5V = tempfloat * multip
+			if 4.7 <= mqttData.v5V && mqttData.v5V <= 5.3 {
 				valuesBool["5V"] = true
 			} else {
 				valuesBool["5V"] = false
 			}
 
 		case 0xC0:
-			values["48V"] = tempfloat*multip + 0.7
-			if 45 <= values["48V"] && values["48V"] <= 50 {
+			mqttData.v48V = tempfloat*multip + 0.7
+			if 45 <= mqttData.v48V && mqttData.v48V <= 50 {
 				valuesBool["48V"] = true
 			} else {
 				valuesBool["48V"] = false
 			}
 		case 0xD0:
-			values["solarV"] = tempfloat*multip + 0.8
-			if 10 <= values["solarV"] && values["solarV"] <= 28 {
+			mqttData.vsolarV = tempfloat*multip + 0.8
+			if 10 <= mqttData.vsolarV && mqttData.vsolarV <= 28 {
 				valuesBool["solarV"] = true
 			} else {
 				valuesBool["solarV"] = false
 			}
 		case 0xE0:
-			values["batteryI"] = (tempfloat - 1.8) * multip
+			mqttData.ibatteryI = (tempfloat - 1.8) * multip
 		case 0xF0:
-			if _, ok := values["solarV"]; ok {
-				values["solarI"] = (tempfloat - 1.8) * multip * 4.13 / values["solarV"]
+			if mqttData.vsolarV != 0 {
+				mqttData.vsolarV = (tempfloat - 1.8) * multip * 4.13 / mqttData.vsolarV
 			}
 		default:
 			fmt.Fprintf(os.Stderr, "case_error\n")
@@ -152,9 +165,11 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 	}
 	beforeValuesBool = valuesBool
 	if logger {
-		fmt.Println(values)
+		fmt.Println(mqttData)
 	}
-	jsonString, _ := json.Marshal(values)
+
+	jsonString, _ := json.Marshal(mqttData)
+
 	// Publish a message.
 	err := cli.Publish(&client.PublishOptions{
 		QoS:       mqtt.QoS0,
