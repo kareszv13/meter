@@ -26,17 +26,16 @@ type Configuration struct {
 }
 
 type Mqttdata struct {
-	v1V8       float64
-	v3V3       float64
-	v5V        float64
-	v48V       float64
-	ibatteryI  float64
-	vbatteryV  float64
-	isolarI    float64
-	vsolarV    float64
-	time       bool
-	BasicTimer int
-	DeviceName string
+	v1V8       float64 `json:"1V8"`
+	v3V3       float64 `json:"3V3"`
+	v5V        float64 `json:"5V"`
+	v48V       float64 `json:"48V"`
+	ibatteryI  float64 `json:"batteryI"`
+	vbatteryV  float64 `json:"batteryV"`
+	isolarI    float64 `json:"solarI"`
+	vsolarV    float64 `json:"solarV"`
+	time       string  `json:"time"`
+	DeviceName string  `json:"DeviceName"`
 }
 
 var configuration Configuration
@@ -166,6 +165,12 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 	beforeValuesBool = valuesBool
 	if logger {
 		fmt.Println(mqttData)
+	}
+
+	t := time.Now()
+	mqttData.time = t.String()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	jsonString, _ := json.Marshal(mqttData)
