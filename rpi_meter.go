@@ -169,9 +169,6 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 
 	t := time.Now()
 	mqttData.time = t.String()
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	jsonString, _ := json.Marshal(mqttData)
 
