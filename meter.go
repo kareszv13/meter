@@ -75,7 +75,7 @@ func runTx(s spi.Conn, logger bool, cli *client.Client) {
 
 	commands := map[byte]float64{0x80: 1.0, 0x90: 1.0, 0xA0: 1.0, 0xB0: 1.25, 0xC0: 13, 0xD0: 6.0, 0xE0: 1.6667, 0xF0: 1.6667}
 
-	var mqttData Mqttdata
+	mqttData := make(Mqttdata)
 	mqttData.vsolarV = 0
 	var valuesBool map[string]bool
 	valuesBool = make(map[string]bool)
